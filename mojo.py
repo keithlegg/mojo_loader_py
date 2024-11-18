@@ -20,6 +20,8 @@ import argparse
 import serial
 import struct
 
+DEBUG_INTERNALS = True 
+
 #Try to rename process to something more friendly than python mojo.py
 try:
     import setproctitle
@@ -117,7 +119,7 @@ def display_progress(p, width=30):
     sys.stdout.flush()
 
 def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
-    file = open(bitstream, 'r')
+    file = open(bitstream, 'rb')
     bits = file.read()
     length = len(bits)
     reboot_mojo(ser, verbose)
@@ -126,7 +128,7 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
         ser.write(b'R')
         ret = ser.read(1)
         if verbose and  ret == b'R':
-            print('Mojo is ready to recieve bitstream')
+            print('Mojo is ready to recieve bitstream (R)\n')
         elif ret != b'R':
             print('Mojo did not respond correctly! Make sure the port is correct')
             sys.exit(1)
@@ -135,32 +137,54 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
         ser.write(b'F')
         ret = ser.read(1)
         if verbose and  ret == b'R':
-            print('Mojo is ready to recieve bitstream')
+            print('Mojo is ready to recieve bitstream (F)\n')
         elif ret != b'R':
             print('Mojo did not respond correctly! Make sure the port is correct')
             sys.exit(1)
 
     if not ram and not no_verify:
-        ser.write('V')
+        ser.write(b'V')
         ret = ser.read(1)
         if verbose and  ret == b'R':
-            print('Mojo is ready to recieve bitstream')
+            print('Mojo is ready to recieve bitstream (V)\n')
         elif ret != b'R':
             print('Mojo did not respond correctly! Make sure the port is correct')
             sys.exit(1)
 
-    buffer = struct.unpack("4B", struct.pack("I", length))
-    buf = ""
+
+    ### DEBUG mojo wants 4 bytes to specify the size of payload ??
+    #buffer = struct.unpack(b"4B", struct.pack("I", length))
+    
+    print(length)
+    print(length.to_bytes(4, byteorder = 'big'))
+
+    buffer = length.to_bytes(4, byteorder = 'big')
+
+    buf = bytearray()
+
     for i in buffer:
-        buf+=(chr(i))
+        buf.append(i)
+
+    if DEBUG_INTERNALS:
+        print('DEBUG PACKAGE IS ')
+        print(buffer)
+
     ser.write(buf)
     ret = ser.read(1)
+
+    if DEBUG_INTERNALS:
+        print('DEBUG response IS ')    
+        print(ret)
+ 
     if verbose and  ret == b'O':
         print('Mojo acknowledged size of bitstream. Writing bitstream')
     elif ret != b'O':
         print('Mojo failed to acknowledge size of bitstream. Did not write')
         sys.exit(1)
 
+
+    
+    #print("DEBUG SKIPPING SERIAL SEND ")
     if progress:
         for i,bit in enumerate(bits):
             ser.write(bit)
@@ -169,10 +193,15 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
     else:
         ser.write(bits)
 
+
     ret = ser.read(1)
     if verbose and  ret == b'D':
         print('Mojo has been flashed')
     elif ret != b'D':
+        if DEBUG_INTERNALS:
+            print('return was ')
+            print(ret)
+            
         print('Mojo failed to flash correctly')
         sys.exit(1)
 
@@ -187,7 +216,9 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
             print('Flash does not contain valid start byte.')
             sys.exit(1)
         ret = ser.read(4)
-        flash_length = struct.unpack("I", ret)[0] - 5
+
+        flash_length = struct.unpack(b"I", ret)[0] - 5
+        
         if  flash_length == length and verbose:
             print('Flash and local bitstream match file size.')
         elif flash_length == length:

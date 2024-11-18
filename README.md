@@ -1,4 +1,10 @@
 fork of the mojo loader written in python.
 
-Let's see if I can get it working in python3
+The original code was meant for Python2. 
+
+This is an attempt to port it to Python3 and for the MojoV3 board. 
+
+
+
+
 
