@@ -1,5 +1,10 @@
 #!/usr/bin/env python
+
 ###-------------------------------------------------------------------------
+### this is a fork by Keith Legg in November 2024. Trying to get it to work on python3 and mojo V3
+###
+###
+### original doc:
 ### Mojo.py is a bitstream uploader for the mojo v2 board
 ### author    Matthew O'Gorman <mog@rldn.net>
 ### copyright 2013 Matthew O'Gorman
@@ -14,6 +19,7 @@ import sys
 import argparse
 import serial
 import struct
+
 #Try to rename process to something more friendly than python mojo.py
 try:
     import setproctitle
@@ -33,15 +39,20 @@ def main():
     parser.add_argument('-r', '--ram', dest='ram', action='store_const',
                        const=True, default=False,
                        help='Install bitstream file only to ram')
+    
+
+    ## DEBUG look into this.. 
     #not currently supported by the default firmware of the board
     # group.add_argument('-c', '--copy', metavar='BITSTREAM', dest='copy', action='append', nargs='?',
     #                     help='Bitstream file to copy from the Mojo [Default: %(default)s]', default=['mojo.bin'])
 
     # group.add_argument('-o', '--only_verify', metavar='BITSTREAM', dest='only_verify', action='store',
     #                    help='Read flash of Mojo only to verify against bitstream.')
+    
     # group.add_argument('-r', '--reboot', dest='reboot', action='store_const',
     #                    const=True, default=False,
     #                    help='Reboot mojo board.')
+
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
                        const=True, default=False,
                        help='Enable verbose output to cli.')
@@ -64,28 +75,32 @@ def main():
     args = parser.parse_args()
 
     if args.version:
-        print Version
+        print(Version)
         sys.exit(0)
 
     #Serial code
     try:
         ser = serial.Serial(args.mojo_tty, 19200, timeout=10)
     except:
-        print 'No serial port found named ' + args.mojo_tty
+        print('No serial port found named ' + args.mojo_tty)
         sys.exit(1)
 
-#    if (not args.bitstream and  not args.install and not args.copy and not args.erase and not args.only_verify and not args.reboot):
+    #if (not args.bitstream and  not args.install and not args.copy and not args.erase and not args.only_verify and not args.reboot):
+    
     if (not args.bitstream and  not args.install and not args.erase):
-        print parser.print_help()
+        print( parser.print_help() )
         sys.exit(1)
+    
     if args.erase:
         if args.verbose:
-            print "Preparing to erase"
+            print('Preparing to erase')
         erase_mojo(ser, args.verbose)
         sys.exit(0)
+
     if args.bitstream:
         install_mojo(ser, args.bitstream, args.verbose, args.no_verify, args.ram, args.progress)
         sys.exit(0)
+    
     if args.install:
         install_mojo(ser, args.install, args.verbose, args.no_verify, args.ram, args.progress)
         sys.exit(0)
@@ -108,30 +123,30 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
     reboot_mojo(ser, verbose)
 
     if ram:
-        ser.write('R')
+        ser.write(b'R')
         ret = ser.read(1)
-        if verbose and  ret == 'R':
-            print 'Mojo is ready to recieve bitstream'
-        elif ret != 'R':
-            print 'Mojo did not respond correctly! Make sure the port is correct'
+        if verbose and  ret == b'R':
+            print('Mojo is ready to recieve bitstream')
+        elif ret != b'R':
+            print('Mojo did not respond correctly! Make sure the port is correct')
             sys.exit(1)
 
     if not ram and no_verify:
-        ser.write('F')
+        ser.write(b'F')
         ret = ser.read(1)
-        if verbose and  ret == 'R':
-            print 'Mojo is ready to recieve bitstream'
-        elif ret != 'R':
-            print 'Mojo did not respond correctly! Make sure the port is correct'
+        if verbose and  ret == b'R':
+            print('Mojo is ready to recieve bitstream')
+        elif ret != b'R':
+            print('Mojo did not respond correctly! Make sure the port is correct')
             sys.exit(1)
 
     if not ram and not no_verify:
         ser.write('V')
         ret = ser.read(1)
-        if verbose and  ret == 'R':
-            print 'Mojo is ready to recieve bitstream'
-        elif ret != 'R':
-            print 'Mojo did not respond correctly! Make sure the port is correct'
+        if verbose and  ret == b'R':
+            print('Mojo is ready to recieve bitstream')
+        elif ret != b'R':
+            print('Mojo did not respond correctly! Make sure the port is correct')
             sys.exit(1)
 
     buffer = struct.unpack("4B", struct.pack("I", length))
@@ -140,10 +155,10 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
         buf+=(chr(i))
     ser.write(buf)
     ret = ser.read(1)
-    if verbose and  ret == 'O':
-        print 'Mojo acknowledged size of bitstream. Writing bitstream'
-    elif ret != 'O':
-        print 'Mojo failed to acknowledge size of bitstream. Did not write'
+    if verbose and  ret == b'O':
+        print('Mojo acknowledged size of bitstream. Writing bitstream')
+    elif ret != b'O':
+        print('Mojo failed to acknowledge size of bitstream. Did not write')
         sys.exit(1)
 
     if progress:
@@ -155,42 +170,42 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
         ser.write(bits)
 
     ret = ser.read(1)
-    if verbose and  ret == 'D':
-        print 'Mojo has been flashed'
-    elif ret != 'D':
-        print 'Mojo failed to flash correctly'
+    if verbose and  ret == b'D':
+        print('Mojo has been flashed')
+    elif ret != b'D':
+        print('Mojo failed to flash correctly')
         sys.exit(1)
 
     if not ram and not no_verify:
-        ser.write('S')
+        ser.write(b'S')
         if verbose:
-            print 'Verifying Mojo'
+            print('Verifying Mojo')
         ret = ser.read(1)
         if  ret == '\xAA' and verbose:
-            print 'First Byte was valid getting flash size.'
+            print('First Byte was valid getting flash size.')
         elif ret != '\xAA':
-            print 'Flash does not contain valid start byte.'
+            print('Flash does not contain valid start byte.')
             sys.exit(1)
         ret = ser.read(4)
         flash_length = struct.unpack("I", ret)[0] - 5
         if  flash_length == length and verbose:
-            print 'Flash and local bitstream match file size.'
+            print('Flash and local bitstream match file size.')
         elif flash_length == length:
-            print 'Flash is not same size as local bitstream.'
+            print('Flash is not same size as local bitstream.')
             sys.exit(1)
         ret = ser.read(length)
         if  ret == bits  and verbose:
-            print 'Flash and local bitstream are a match.'
+            print('Flash and local bitstream are a match.')
         elif ret == bits:
-            print 'Flash and local bitstream do not match.'
+            print('Flash and local bitstream do not match.')
             sys.exit(1)
     if not ram:
-        ser.write('L')
+        ser.write(b'L')
         ret = ser.read(1)
-        if verbose and  ret == 'D':
-            print 'Mojo has been loaded bitsream'
-        elif ret != 'D':
-            print 'Mojo failed to load bitstream'
+        if verbose and  ret == b'D':
+            print('Mojo has been loaded bitsream')
+        elif ret != b'D':
+            print('Mojo failed to load bitstream')
             sys.exit(1)
     return
 
@@ -203,17 +218,21 @@ def reboot_mojo(ser, verbose):
         ser.setDTR(True)
         time.sleep(0.005)
     if verbose:
-        print 'Rebooting Mojo'
+        print('Rebooting Mojo')
     return
 
 def erase_mojo(ser, verbose):
     reboot_mojo(ser, verbose)
-    ser.write('E')
+    ser.write('E'.encode('ascii'))
     ret = ser.read(1)
-    if verbose and ret == 'D':
-        print 'Erased mojo successfully.'
-    elif ret != 'D':
-        print 'Failed to erase Mojo.  Error code: ' + ret
+
+    #print('#########DEBUG RETURN IS ')
+    #print(ret)
+
+    if verbose and ret == b'D':
+        print('Erased mojo successfully.')
+    elif ret != b'D':
+        print('Failed to erase Mojo.  Error code: %s'%ret)
         sys.exit(1)
     ser.close()
     sys.exit(0)
