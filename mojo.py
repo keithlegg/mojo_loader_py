@@ -30,7 +30,7 @@ except ImportError as error:
     pass
 
 def main():
-    Version = "Mojo v2.0 is licensed under the GPLv3 copyright 2013 Matthew O'Gorman"
+    Version = "Mojo FPGA is licensed under the GPLv3 copyright 2013 Matthew O'Gorman, 2024 Keith Legg"
 
     parser = argparse.ArgumentParser(description='Mojo bitstream loader v2')
     group = parser.add_mutually_exclusive_group(required=True)
@@ -153,15 +153,10 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
 
 
     #########################
-
-    #buffer = struct.unpack(b"4B", struct.pack("I", length))
-
     if DEBUG_INTERNALS:    
         print('size of payload is ', length)
-    #    print('in binary that is ', length.to_bytes(4, byteorder = 'little'))
 
     buffer = length.to_bytes(4, byteorder = 'little')
-
     buf = bytearray()
 
     for i in buffer:
@@ -183,11 +178,8 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
     elif ret != b'O':
         print('Mojo failed to acknowledge size of bitstream. Did not write')
         sys.exit(1)
-
     #########################
 
-    
-    #print("DEBUG SKIPPING SERIAL SEND ")
     if progress:
         for i,bit in enumerate(bits):
             ser.write(bit)
@@ -204,7 +196,6 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
         if DEBUG_INTERNALS:
             print('return was ')
             print(ret)
-            
         print('Mojo failed to flash correctly')
         sys.exit(1)
 
@@ -264,10 +255,6 @@ def erase_mojo(ser, verbose):
     reboot_mojo(ser, verbose)
     ser.write('E'.encode('ascii'))
     ret = ser.read(1)
-
-    #print('#########DEBUG RETURN IS ')
-    #print(ret)
-
     if verbose and ret == b'D':
         print('Erased mojo successfully.')
     elif ret != b'D':
