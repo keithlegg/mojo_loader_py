@@ -1,4 +1,4 @@
-fork of the mojo loader written in pythonm which is itself a fork of:
+fork of the mojo loader written in python3 which is itself a fork of:
 
 https://github.com/mogorman/mojo.py
 
