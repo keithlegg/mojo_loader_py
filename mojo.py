@@ -20,7 +20,7 @@ import argparse
 import serial
 import struct
 
-DEBUG_INTERNALS = True 
+DEBUG_INTERNALS = False 
 
 #Try to rename process to something more friendly than python mojo.py
 try:
@@ -41,19 +41,6 @@ def main():
     parser.add_argument('-r', '--ram', dest='ram', action='store_const',
                        const=True, default=False,
                        help='Install bitstream file only to ram')
-    
-
-    ## DEBUG look into this.. 
-    #not currently supported by the default firmware of the board
-    # group.add_argument('-c', '--copy', metavar='BITSTREAM', dest='copy', action='append', nargs='?',
-    #                     help='Bitstream file to copy from the Mojo [Default: %(default)s]', default=['mojo.bin'])
-
-    # group.add_argument('-o', '--only_verify', metavar='BITSTREAM', dest='only_verify', action='store',
-    #                    help='Read flash of Mojo only to verify against bitstream.')
-    
-    # group.add_argument('-r', '--reboot', dest='reboot', action='store_const',
-    #                    const=True, default=False,
-    #                    help='Reboot mojo board.')
 
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
                        const=True, default=False,
@@ -73,6 +60,18 @@ def main():
     parser.add_argument('-p', '--progress', dest='progress', action='store_const',
                         const=True, default=False,
                         help='Display progress bar while uploading.')
+
+    ## DEBUG look into this.. 
+    #not currently supported by the default firmware of the board
+    # group.add_argument('-c', '--copy', metavar='BITSTREAM', dest='copy', action='append', nargs='?',
+    #                     help='Bitstream file to copy from the Mojo [Default: %(default)s]', default=['mojo.bin'])
+
+    # group.add_argument('-o', '--only_verify', metavar='BITSTREAM', dest='only_verify', action='store',
+    #                    help='Read flash of Mojo only to verify against bitstream.')
+    
+    # group.add_argument('-r', '--reboot', dest='reboot', action='store_const',
+    #                    const=True, default=False,
+    #                    help='Reboot mojo board.')
 
     args = parser.parse_args()
 
@@ -108,6 +107,7 @@ def main():
         sys.exit(0)
 
 def display_progress(p, width=30):
+    #DEBUG - this is broken  
     if p > 1:
         p = 1
     if p < 0:
@@ -152,13 +152,15 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
             sys.exit(1)
 
 
-    ### DEBUG mojo wants 4 bytes to specify the size of payload ??
-    #buffer = struct.unpack(b"4B", struct.pack("I", length))
-    
-    print(length)
-    print(length.to_bytes(4, byteorder = 'big'))
+    #########################
 
-    buffer = length.to_bytes(4, byteorder = 'big')
+    #buffer = struct.unpack(b"4B", struct.pack("I", length))
+
+    if DEBUG_INTERNALS:    
+        print('size of payload is ', length)
+    #    print('in binary that is ', length.to_bytes(4, byteorder = 'little'))
+
+    buffer = length.to_bytes(4, byteorder = 'little')
 
     buf = bytearray()
 
@@ -182,6 +184,7 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
         print('Mojo failed to acknowledge size of bitstream. Did not write')
         sys.exit(1)
 
+    #########################
 
     
     #print("DEBUG SKIPPING SERIAL SEND ")
@@ -210,9 +213,14 @@ def install_mojo(ser, bitstream, verbose, no_verify, ram, progress):
         if verbose:
             print('Verifying Mojo')
         ret = ser.read(1)
-        if  ret == '\xAA' and verbose:
+        
+        if DEBUG_INTERNALS:
+            print('verify ret is ')
+            print(ret)
+
+        if  ret == b'\xAA' and verbose:
             print('First Byte was valid getting flash size.')
-        elif ret != '\xAA':
+        elif ret != b'\xAA':
             print('Flash does not contain valid start byte.')
             sys.exit(1)
         ret = ser.read(4)
